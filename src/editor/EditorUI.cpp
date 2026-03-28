@@ -31,7 +31,7 @@ void SetupEditorStyle()
 }
 
 // ================= Toolbar =================
-void DrawToolbarContent()
+void DrawToolbarContent(EditorState& editorState)
 {
     float width = ImGui::GetWindowWidth();
     float buttonWidth = 70.0f;
@@ -40,53 +40,98 @@ void DrawToolbarContent()
     ImGui::SetCursorPosX((width - totalWidth) * 0.5f);
 
     if (ImGui::Button("Play", ImVec2(buttonWidth, 0)))
-        printf("[Toolbar] Play\n");
+        editorState.mode = EditorMode::Play;
 
     ImGui::SameLine();
     if (ImGui::Button("Pause", ImVec2(buttonWidth, 0)))
-        printf("[Toolbar] Pause\n");
+        editorState.mode = EditorMode::Pause;
 
     ImGui::SameLine();
     if (ImGui::Button("Stop", ImVec2(buttonWidth, 0)))
-        printf("[Toolbar] Stop\n");
+        editorState.mode = EditorMode::Edit;
+
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+
+    const char* modeText = "Edit";
+    if (editorState.mode == EditorMode::Play) modeText = "Play";
+    else if (editorState.mode == EditorMode::Pause) modeText = "Pause";
+
+    ImGui::Text("Mode: %s", modeText);
 }
 
 // ================= Panels =================
-void DrawHierarchy()
+void DrawHierarchy(SceneState& sceneState, EditorState& editorState)
 {
     ImGui::Begin("Hierarchy");
-    ImGui::Text("Main Camera");
-    ImGui::Text("Player");
-    ImGui::Text("Enemy");
+
+    for (int i = 0; i < sceneState.objects.size(); ++i) {
+        bool selected = (editorState.selectedObjectIndex == i);
+        if (ImGui::Selectable(sceneState.objects[i].name.c_str(), selected)) {
+            editorState.selectedObjectIndex = i;
+        }
+    }
+
     ImGui::End();
 }
 
-void DrawScene()
+void DrawScene(SceneState& sceneState, EditorState& editorState)
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
 
     ImGui::Begin("Scene");
-    ImGui::Text("Scene View Placeholder");
-    ImGui::Button("Scene Object 1");
-    ImGui::Button("Scene Object 2");
+
+    const char* modeText = "Edit";
+    if (editorState.mode == EditorMode::Play) modeText = "Play";
+    else if (editorState.mode == EditorMode::Pause) modeText = "Pause";
+
+    ImGui::Text("Scene Debug View");
+    ImGui::Separator();
+    ImGui::Text("Mode: %s", modeText);
+    ImGui::Text("Object count: %d", (int)sceneState.objects.size());
+
+    int index = editorState.selectedObjectIndex;
+    if (index >= 0 && index < sceneState.objects.size()) {
+        auto& obj = sceneState.objects[index];
+        ImGui::Separator();
+        ImGui::Text("Selected Object");
+        ImGui::Text("Name: %s", obj.name.c_str());
+        ImGui::Text("ID: %d", obj.id);
+        ImGui::Text("Position: %.1f, %.1f", obj.position[0], obj.position[1]);
+        ImGui::Text("Scale: %.1f, %.1f", obj.scale[0], obj.scale[1]);
+    }
+    else {
+        ImGui::Separator();
+        ImGui::Text("No object selected");
+    }
+
     ImGui::End();
 
     ImGui::PopStyleVar(2);
 }
 
-void DrawInspector()
+void DrawInspector(SceneState& sceneState, EditorState& editorState)
 {
-    static float position[3] = { 0,0,0 };
-    static float rotation[3] = { 0,0,0 };
-    static float scale[3] = { 1,1,1 };
-
     ImGui::Begin("Inspector");
-    ImGui::Text("Selected Object");
-    ImGui::Text("Name: Player");
-    ImGui::InputFloat3("Position", position);
-    ImGui::InputFloat3("Rotation", rotation);
-    ImGui::InputFloat3("Scale", scale);
+
+    int index = editorState.selectedObjectIndex;
+    if (index >= 0 && index < sceneState.objects.size()) {
+        auto& obj = sceneState.objects[index];
+
+        ImGui::Text("Selected Object");
+        ImGui::Separator();
+        ImGui::Text("Name: %s", obj.name.c_str());
+        ImGui::Text("ID: %d", obj.id);
+
+        ImGui::InputFloat2("Position", obj.position);
+        ImGui::InputFloat2("Scale", obj.scale);
+    }
+    else {
+        ImGui::Text("No object selected");
+    }
+
     ImGui::End();
 }
 
@@ -110,7 +155,7 @@ void DrawConsole()
 }
 
 // ================= 主界面 =================
-void DrawEditorUI()
+void DrawEditorUI(SceneState& sceneState, EditorState& editorState)
 {
     static bool dockspaceOpen = true;
     static bool layout_initialized = false;
@@ -176,7 +221,7 @@ void DrawEditorUI()
         ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoDocking);
 
-    DrawToolbarContent();
+    DrawToolbarContent(editorState);
 
     ImGui::End();
 
@@ -184,9 +229,9 @@ void DrawEditorUI()
     ImGui::PopStyleVar();
 
     // ===== Panels =====
-    DrawHierarchy();
-    DrawScene();
-    DrawInspector();
+    DrawHierarchy(sceneState,editorState);
+    DrawScene(sceneState, editorState);
+    DrawInspector(sceneState, editorState);
     DrawProject();
     DrawConsole();
 }

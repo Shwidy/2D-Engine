@@ -1,7 +1,8 @@
 #pragma once
+#include "SceneState.h"
+#include "EditorState.h"
 
-class GameLoop
-{
+class GameLoop {
 public:
-    void update();
+    void update(SceneState& sceneState, EditorState& editorState);
 };

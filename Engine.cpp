@@ -31,6 +31,11 @@ bool Engine::init() {
     ImGui_ImplSDL3_InitForSDLRenderer(windowManager.getWindow(), renderer2D.getRenderer());
     ImGui_ImplSDLRenderer3_Init(renderer2D.getRenderer());
 
+    // 初始化场景数据
+    sceneState.objects.push_back({ 0, "Player", {100.0f, 100.0f}, {1.0f, 1.0f} });
+    sceneState.objects.push_back({ 1, "Enemy", {300.0f, 200.0f}, {1.0f, 1.0f} });
+    editorState.selectedObjectIndex = 0;
+
     running = true;
     return true;
 }
@@ -38,30 +43,32 @@ bool Engine::init() {
 void Engine::run() {
     SDL_Event event;
     while (running) {
-        // 1️⃣ 处理事件
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL3_ProcessEvent(&event);   // ImGui事件处理
-            if (event.type == SDL_EVENT_QUIT) running = false;
+        // 1. 输入
+        inputManager.processEvents(windowManager);
+        if (inputManager.shouldQuit()) {
+            running = false;
         }
 
-        // 开始 ImGui 帧
+        // 2. 逻辑
+        gameLoop.update(sceneState, editorState);
+
+        // 3. 开始 ImGui 帧
         ImGui_ImplSDL3_NewFrame();
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui::NewFrame();
 
-        // 绘制 UI
-        DrawEditorUI();
+        // 4. 编辑器 UI
+        DrawEditorUI(sceneState, editorState);
 
-        // ✅ 渲染 2D 内容
+        // 5. 渲染场景
         renderer2D.clear();
-        renderer2D.drawTexture(resourceManager.getTexture());
+        renderer2D.renderScene(sceneState, resourceManager);
 
-
-        // 渲染 ImGui
+        // 6. 渲染 ImGui
         ImGui::Render();
         ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer2D.getRenderer());
 
-        // 渲染 2D
+        // 7. 提交画面
         renderer2D.present();
     }
 }

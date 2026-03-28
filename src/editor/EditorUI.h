@@ -1,3 +1,5 @@
 #pragma once
+#include "../../SceneState.h"
+#include "../../EditorState.h"
 
-void DrawEditorUI();
+void DrawEditorUI(SceneState& sceneState, EditorState& editorState);

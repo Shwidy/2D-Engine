@@ -1,13 +1,14 @@
 #include "GameLoop.h"
 
-// GameLoop 只负责逻辑更新
-// 不要调用 ImGui 或 renderer2D
-
-void GameLoop::update()
+void GameLoop::update(SceneState& sceneState, EditorState& editorState)
 {
-    // TODO: 在这里更新游戏对象、动画、物理等逻辑
-    // 例如：
-    // for (auto& obj : gameObjects) { obj.update(); }
+    if (editorState.mode != EditorMode::Play) {
+        return;
+    }
 
-    // 注意：不要做任何渲染或 UI 调用
+    if (!sceneState.objects.empty()) {
+        sceneState.objects[0].position[0] += 0.1f;
+    }
+    // 暂时先不做复杂逻辑
+    // 后面这里负责移动、动画、碰撞、脚本等
 }
