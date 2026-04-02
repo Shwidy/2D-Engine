@@ -140,6 +140,6 @@ void DrawEditorUI(SceneState& sceneState, EditorState& editorState)
     DrawHierarchyPanel(sceneState, editorState);
     DrawScenePanel(sceneState, editorState);
     DrawInspectorPanel(sceneState, editorState);
-    DrawAssetPanel();
+    DrawAssetPanel(sceneState, editorState);
     DrawConsolePanel();
 }

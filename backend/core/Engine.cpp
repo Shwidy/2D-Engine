@@ -18,10 +18,6 @@ bool Engine::init() {
         return false;
     }
 
-    if (!resourceManager.loadTexture("test.png", renderer2D.getRenderer())) {
-        return false;
-    }
-
     // ✅ 初始化 ImGui
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
@@ -32,8 +28,8 @@ bool Engine::init() {
     ImGui_ImplSDLRenderer3_Init(renderer2D.getRenderer());
 
     // 初始化场景数据
-    sceneState.objects.push_back({ 0, "Player", {100.0f, 100.0f}, {1.0f, 1.0f} });
-    sceneState.objects.push_back({ 1, "Enemy", {300.0f, 200.0f}, {1.0f, 1.0f} });
+    sceneState.objects.push_back({ 0, "Player", {100.0f, 100.0f}, {1.0f, 1.0f},"test.png"});
+    sceneState.objects.push_back({ 1, "Enemy", {300.0f, 200.0f}, {1.0f, 1.0f},"test.png"});
     editorState.selectedObjectIndex = 0;
 
     running = true;
@@ -94,6 +90,7 @@ void Engine::run() {
         }
 
         // 2. 开始 ImGui 帧
+
         ImGui_ImplSDL3_NewFrame();
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui::NewFrame();

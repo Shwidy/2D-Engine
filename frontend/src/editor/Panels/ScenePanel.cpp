@@ -1,5 +1,10 @@
 #include "ScenePanel.h"
 #include "imgui.h"
+#include "../../../../backend/SceneSerializer.h"
+#include <cstring>
+
+static std::string sceneStatus = "No scene operation yet";
+static std::string sceneFilePath = "scene.json";
 
 void DrawScenePanel(SceneState& sceneState, EditorState& editorState)
 {
@@ -54,6 +59,7 @@ void DrawScenePanel(SceneState& sceneState, EditorState& editorState)
         newObject.position[1] = 0.0f;
         newObject.scale[0] = 1.0f;
         newObject.scale[1] = 1.0f;
+        newObject.texturePath = "test.png";
 
         sceneState.objects.push_back(newObject);
         editorState.selectedObjectIndex = static_cast<int>(sceneState.objects.size()) - 1;
@@ -73,6 +79,35 @@ void DrawScenePanel(SceneState& sceneState, EditorState& editorState)
             }
         }
     }
+	// ===== 场景文件操作 =====
+    static char sceneNameBuffer[128] = "TestScene";
+
+    ImGui::InputText("Scene Name", sceneNameBuffer, sizeof(sceneNameBuffer));
+
+    if (ImGui::Button("Save Scene")) {
+        if (SaveSceneToFile(sceneState, sceneNameBuffer, sceneFilePath)) {
+            sceneStatus = "Scene saved successfully";
+        }
+        else {
+            sceneStatus = "Failed to save scene";
+        }
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Load Scene")) {
+        std::string loadedSceneName;
+        if (LoadSceneFromFile(sceneState, editorState, loadedSceneName, sceneFilePath)) {
+            strncpy(sceneNameBuffer, loadedSceneName.c_str(), sizeof(sceneNameBuffer));
+            sceneNameBuffer[sizeof(sceneNameBuffer) - 1] = '\0';
+            sceneStatus = "Scene loaded successfully";
+        }
+        else {
+            sceneStatus = "Failed to load scene";
+        }
+    }
+    ImGui::Text("Scene File: %s", sceneFilePath.c_str());
+    ImGui::Text("Status: %s", sceneStatus.c_str());
 
     // ===== 全部对象列表 =====
     ImGui::Separator();
@@ -95,6 +130,7 @@ void DrawScenePanel(SceneState& sceneState, EditorState& editorState)
         ImGui::Text("Scale(%.1f, %.1f)", obj.scale[0], obj.scale[1]);
     }
 
+    index = editorState.selectedObjectIndex;
     // ===== 当前选中对象详细信息 =====
     ImGui::Separator();
     if (index >= 0 && index < static_cast<int>(sceneState.objects.size())) {
