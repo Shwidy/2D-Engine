@@ -49,7 +49,7 @@
 - Dear ImGui
 - CMake
 - Ninja
-- Visual Studio 2022（Windows 开发推荐）
+- Visual Studio 2022/2026（Windows 开发推荐）
 
 说明：
 
@@ -94,7 +94,7 @@
 如果你准备在 Windows 上继续开发，建议使用下面这套环境：
 
 - Windows 10 / 11
-- Visual Studio 2022
+- Visual Studio 2022/2026
 - Visual Studio 安装时勾选 `Desktop development with C++`
 - CMake
 - Ninja
