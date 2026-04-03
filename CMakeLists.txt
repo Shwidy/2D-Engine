@@ -25,6 +25,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/external/imgui
+    ${CMAKE_SOURCE_DIR}/external/json-develop/single_include
 )
 
 # 可执行程序
@@ -60,7 +61,7 @@ add_executable(SDLTest
     # ImGui SDL3 后端
     external/imgui/backends/imgui_impl_sdl3.cpp
     external/imgui/backends/imgui_impl_sdlrenderer3.cpp
- "frontend/src/editor/Panels/ConsolePanel.h" "frontend/src/editor/Panels/ConsolePanel.cpp")
+ "frontend/src/editor/Panels/ConsolePanel.h" "frontend/src/editor/Panels/ConsolePanel.cpp" "backend/SceneSerializer.h" "backend/SceneSerializer.cpp")
 
 # 链接库
 target_link_libraries(SDLTest PRIVATE

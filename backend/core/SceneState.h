@@ -9,6 +9,7 @@ struct GameObject {
     string name;
     float position[2];
     float scale[2];
+    std::string texturePath;
 };
 
 struct SceneState {

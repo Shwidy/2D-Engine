@@ -1,14 +1,15 @@
 #pragma once
 #include <SDL3/SDL.h>
 #include <string>
+#include <unordered_map>
 
 class ResourceManager {
 private:
-    SDL_Texture* texture;
+    std::unordered_map<std::string, SDL_Texture*> textures;
+
 
 public:
     ResourceManager();
-    SDL_Texture* loadTexture(const std::string& path, SDL_Renderer* renderer);
-    SDL_Texture* getTexture() const;
+    SDL_Texture* getTexture(const std::string& path, SDL_Renderer* renderer);
     void destroy();
 };
