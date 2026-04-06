@@ -30,8 +30,10 @@ struct BrowserState {
     std::vector<char> textBuffer = std::vector<char>(kEditorBufferSize, '\0');
     bool textDirty = false;
     std::string pendingCreateDirectory;
+    std::string pendingCreatePath;
     std::string pendingDeletePath;
     std::string pendingRenamePath;
+    bool openCreateNamePopup = false;
     bool openDeletePopup = false;
     bool openRenamePopup = false;
     char createItemName[128] = "NewItem";
@@ -196,8 +198,10 @@ void ResetBrowserState(BrowserState& state, const EditorState& editorState) {
     std::fill(state.textBuffer.begin(), state.textBuffer.end(), '\0');
     state.textDirty = false;
     state.pendingCreateDirectory.clear();
+    state.pendingCreatePath.clear();
     state.pendingDeletePath.clear();
     state.pendingRenamePath.clear();
+    state.openCreateNamePopup = false;
     state.openDeletePopup = false;
     state.openRenamePopup = false;
     std::strcpy(state.createItemName, "NewItem");
@@ -286,6 +290,61 @@ void DeletePendingEntry(BrowserState& state, EditorState& editorState) {
 void QueueDeleteForPath(BrowserState& state, const std::string& path) {
     state.pendingDeletePath = path;
     state.openDeletePopup = true;
+}
+
+void QueueCreateNameForPath(BrowserState& state, const std::string& path) {
+    state.pendingCreatePath = path;
+    const fs::path filePath = ResourcePathUtils::Utf8ToPath(path);
+    std::string baseName;
+    const std::string filename = filePath.filename().string();
+    if (IsSceneFile(filePath)) {
+        baseName = filename.substr(0, filename.size() - 11);
+    } else {
+        baseName = filePath.stem().string();
+    }
+    std::strncpy(state.createItemName, baseName.c_str(), sizeof(state.createItemName));
+    state.createItemName[sizeof(state.createItemName) - 1] = '\0';
+    state.openCreateNamePopup = true;
+}
+
+void ClearCreateNamePopupState(BrowserState& state) {
+    state.pendingCreatePath.clear();
+    state.openCreateNamePopup = false;
+    std::strcpy(state.createItemName, "NewItem");
+}
+
+void ClearRenamePopupState(BrowserState& state) {
+    state.pendingRenamePath.clear();
+    state.renameItemName[0] = '\0';
+    state.openRenamePopup = false;
+}
+
+void BeginAssetDragSource(const AssetRecord* asset) {
+    if (asset == nullptr) {
+        return;
+    }
+
+    const char* payloadType = nullptr;
+    if (asset->type == AssetType::Texture) {
+        payloadType = "ASSET_TEXTURE_ID";
+    } else if (asset->type == AssetType::Script) {
+        payloadType = "ASSET_SCRIPT_ID";
+    }
+
+    if (payloadType == nullptr) {
+        return;
+    }
+
+    if (ImGui::BeginDragDropSource()) {
+        const std::uint64_t assetId = asset->id;
+        ImGui::SetDragDropPayload(payloadType, &assetId, sizeof(assetId));
+        ImGui::TextUnformatted(asset->name.c_str());
+        ImGui::TextDisabled("%s", asset->typeName.c_str());
+        if (!asset->relativePath.empty()) {
+            ImGui::TextDisabled("%s", asset->relativePath.c_str());
+        }
+        ImGui::EndDragDropSource();
+    }
 }
 
 void AssignAssetToSelection(SceneState& sceneState, EditorState& editorState, const AssetRecord& asset) {
@@ -387,6 +446,15 @@ void QueueRenameForPath(BrowserState& state, const std::string& path) {
     state.openRenamePopup = true;
 }
 
+std::string GetEditableBaseName(const std::string& path) {
+    const fs::path filePath = ResourcePathUtils::Utf8ToPath(path);
+    const std::string filename = filePath.filename().string();
+    if (IsSceneFile(filePath)) {
+        return filename.substr(0, filename.size() - 11);
+    }
+    return filePath.stem().string();
+}
+
 void CreateItemAndStartRename(BrowserState& state, EditorState& editorState, int typeIndex, const std::string& directory) {
     std::string createdPath;
     std::string error;
@@ -401,7 +469,7 @@ void CreateItemAndStartRename(BrowserState& state, EditorState& editorState, int
         editorState.pendingProjectCommand = ProjectCommand::Sync;
         state.selectedPath = createdPath;
         state.currentDirectory = directory;
-        QueueRenameForPath(state, createdPath);
+        QueueCreateNameForPath(state, createdPath);
     } else {
         editorState.assetStatus = error.empty() ? "Failed to create item" : error;
     }
@@ -487,6 +555,10 @@ void DrawAssetPanel(SceneState& sceneState, EditorState& editorState)
         }
     }
 
+    if (browserState.openCreateNamePopup) {
+        ImGui::OpenPopup("CreateProjectEntryNamePopup");
+        browserState.openCreateNamePopup = false;
+    }
     if (browserState.openRenamePopup) {
         ImGui::OpenPopup("RenameProjectEntryPopup");
         browserState.openRenamePopup = false;
@@ -514,6 +586,50 @@ void DrawAssetPanel(SceneState& sceneState, EditorState& editorState)
         ImGui::EndPopup();
     }
 
+    if (ImGui::BeginPopupModal("CreateProjectEntryNamePopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("Name the new entry:");
+        ImGui::TextWrapped("%s", browserState.pendingCreatePath.c_str());
+        ImGui::InputText("File Name", browserState.createItemName, sizeof(browserState.createItemName));
+        if (ImGui::Button("Create", ImVec2(120.0f, 0.0f))) {
+            const std::string previousCreatePath = browserState.pendingCreatePath;
+            const std::string requestedName = browserState.createItemName;
+            const std::string currentBaseName = GetEditableBaseName(previousCreatePath);
+            if (requestedName == currentBaseName) {
+                editorState.assetStatus = "Created: " + previousCreatePath;
+                editorState.pendingProjectCommand = ProjectCommand::Sync;
+                browserState.selectedPath = previousCreatePath;
+                ClearCreateNamePopupState(browserState);
+                ImGui::CloseCurrentPopup();
+            } else {
+                std::string renamedPath;
+                std::string error;
+                if (ProjectManager::RenameProjectEntry(
+                    BuildProjectDescriptor(editorState),
+                    previousCreatePath,
+                    requestedName,
+                    renamedPath,
+                    error)) {
+                    editorState.assetStatus = "Created: " + renamedPath;
+                    editorState.pendingProjectCommand = ProjectCommand::Sync;
+                    browserState.selectedPath = renamedPath;
+                    if (browserState.loadedTextPath == previousCreatePath) {
+                        browserState.loadedTextPath = renamedPath;
+                    }
+                    ClearCreateNamePopupState(browserState);
+                    ImGui::CloseCurrentPopup();
+                } else {
+                    editorState.assetStatus = error.empty() ? "Failed to name new entry" : error;
+                }
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Keep Default Name", ImVec2(160.0f, 0.0f))) {
+            ClearCreateNamePopupState(browserState);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     if (ImGui::BeginPopupModal("RenameProjectEntryPopup", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextWrapped("Rename entry:");
         ImGui::TextWrapped("%s", browserState.pendingRenamePath.c_str());
@@ -534,9 +650,7 @@ void DrawAssetPanel(SceneState& sceneState, EditorState& editorState)
                 if (browserState.loadedTextPath == previousRenamePath) {
                     browserState.loadedTextPath = renamedPath;
                 }
-                browserState.pendingRenamePath.clear();
-                browserState.renameItemName[0] = '\0';
-                browserState.openRenamePopup = false;
+                ClearRenamePopupState(browserState);
                 ImGui::CloseCurrentPopup();
             } else {
                 editorState.assetStatus = error.empty() ? "Failed to rename entry" : error;
@@ -544,9 +658,7 @@ void DrawAssetPanel(SceneState& sceneState, EditorState& editorState)
         }
         ImGui::SameLine();
         if (ImGui::Button("Cancel##Rename", ImVec2(120.0f, 0.0f))) {
-            browserState.pendingRenamePath.clear();
-            browserState.renameItemName[0] = '\0';
-            browserState.openRenamePopup = false;
+            ClearRenamePopupState(browserState);
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -627,6 +739,7 @@ void DrawAssetPanel(SceneState& sceneState, EditorState& editorState)
                 const std::string normalized = NormalizePath(path);
                 const bool isDir = entry.is_directory();
                 const bool selected = browserState.selectedPath == normalized;
+                const AssetRecord* asset = !isDir ? editorState.assetRegistry.findByPath(normalized) : nullptr;
                 std::string label = isDir ? "[Dir] " : "[File] ";
                 label += path.filename().generic_string();
                 if (ImGui::Selectable((label + "##" + normalized).c_str(), selected)) {
@@ -689,6 +802,7 @@ void DrawAssetPanel(SceneState& sceneState, EditorState& editorState)
                     }
                     ImGui::EndPopup();
                 }
+                BeginAssetDragSource(asset);
                 ImGui::TextDisabled("%s", RelativeToProject(editorState, path).c_str());
             }
             if (ImGui::BeginPopupContextWindow("DirectoryBlankContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {

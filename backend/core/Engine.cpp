@@ -256,7 +256,7 @@ void Engine::handleProjectCommands() {
 
 void Engine::run() {
     while (running) {
-        inputManager.processEvents(windowManager);
+        inputManager.processEvents(windowManager, sceneState, editorState);
         if (inputManager.shouldQuit()) {
             running = false;
         }

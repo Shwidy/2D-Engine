@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../backend/resource/AssetRegistry.h"
+#include <cstdint>
 #include <string>
 
 enum class EditorMode {
@@ -30,6 +31,14 @@ struct EditorState {
     ProjectCommand pendingProjectCommand = ProjectCommand::None;
     float sceneViewportWidth = 0.0f;
     float sceneViewportHeight = 0.0f;
+    float sceneViewportScreenX = 0.0f;
+    float sceneViewportScreenY = 0.0f;
+    float sceneViewportScreenWidth = 0.0f;
+    float sceneViewportScreenHeight = 0.0f;
+    bool isDraggingSceneObject = false;
+    int draggingObjectIndex = -1;
+    float sceneDragOffsetX = 0.0f;
+    float sceneDragOffsetY = 0.0f;
     AssetRegistry assetRegistry;
     std::string assetStatus = "No assets imported";
     std::string projectName;
