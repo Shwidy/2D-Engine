@@ -4,6 +4,8 @@
 
 #include <string>
 #include <vector>
+#include <atomic>
+#include <future>
 
 enum class EditorMode {
     Edit,
@@ -23,6 +25,13 @@ enum class ProjectCommand {
     Create,
     Open,
     Sync
+};
+
+enum class ProjectTaskStatus {
+    Idle,
+    Running,
+    Done,
+    Failed
 };
 
 enum class EditorLogLevel {
@@ -75,5 +84,10 @@ struct EditorState {
     std::string hierarchySearch;
     std::string focusAssetPath;
     std::vector<EditorLogEntry> logs;
+
+    // Async project loading
+    std::atomic<ProjectTaskStatus> projectTaskStatus{ProjectTaskStatus::Idle};
+    std::future<void> projectTaskFuture;
+    std::string projectTaskError;
 };
 
