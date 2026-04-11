@@ -30,7 +30,7 @@ bool Engine::init() {
     }
 
     Renderer::Init(windowManager.GetGraphicsAPI());
-    Renderer::OnWindowResize(windowManager.GetWidth(), windowManager.GetHeight());
+    Renderer::OnWindowResize(windowManager.GetFramebufferWidth(), windowManager.GetFramebufferHeight());
 
     if (!renderer2D.init(windowManager.GetNativeWindow())) {
         return false;
@@ -46,10 +46,29 @@ bool Engine::init() {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+    imguiLayer.SetExternalScrollCallback([this](float, float yOffset) {
+        if (!editorState.showScene) {
+            return;
+        }
+
+        const ImVec2 mousePos = ImGui::GetIO().MousePos;
+        const bool insideViewport =
+            mousePos.x >= editorState.sceneViewportScreenX &&
+            mousePos.y >= editorState.sceneViewportScreenY &&
+            mousePos.x <= editorState.sceneViewportScreenX + editorState.sceneViewportScreenWidth &&
+            mousePos.y <= editorState.sceneViewportScreenY + editorState.sceneViewportScreenHeight;
+
+        if (insideViewport) {
+            renderer2D.OnMouseScrolled(0.0f, yOffset);
+        }
+    });
+
     const AssetRecord* defaultTexture = editorState.assetRegistry.findByPath("pillar.png");
     const std::uint64_t defaultTextureId = defaultTexture ? defaultTexture->id : 0;
     const std::string defaultTexturePath =
         defaultTexture && !defaultTexture->relativePath.empty() ? defaultTexture->relativePath : "pillar.png";
+    editorState.sceneViewportWidth = static_cast<float>(windowManager.GetFramebufferWidth());
+    editorState.sceneViewportHeight = static_cast<float>(windowManager.GetFramebufferHeight());
     sceneState.objects.push_back({ 0, "Player", {100.0f, 100.0f}, {1.0f, 1.0f}, 0.0f, defaultTextureId, defaultTexturePath, 0, "" });
     sceneState.objects.push_back({ 1, "Enemy", {300.0f, 200.0f}, {1.0f, 1.0f}, 0.0f, defaultTextureId, defaultTexturePath, 0, "" });
     editorState.selectedObjectIndex = 0;
@@ -58,6 +77,7 @@ bool Engine::init() {
     AddEditorLog(editorState, EditorLogLevel::Info, "Engine initialized.");
 
     running = true;
+    lastFrameTime = std::chrono::steady_clock::now();
     return true;
 }
 
@@ -273,6 +293,11 @@ void Engine::handleProjectCommands() {
 
 void Engine::run() {
     while (running) {
+        const auto frameStart = std::chrono::steady_clock::now();
+        const std::chrono::duration<float> frameDuration = frameStart - lastFrameTime;
+        lastFrameTime = frameStart;
+        const float deltaSeconds = frameDuration.count();
+
         windowManager.PollEvents();
         inputManager.processEvents(windowManager, sceneState, editorState);
         if (inputManager.shouldQuit()) {
@@ -286,7 +311,7 @@ void Engine::run() {
             static_cast<int>(editorState.sceneViewportWidth),
             static_cast<int>(editorState.sceneViewportHeight)
         );
-        renderer2D.renderScene(sceneState, resourceManager);
+        renderer2D.renderScene(sceneState, resourceManager, deltaSeconds);
         DrawEditorUI(sceneState, editorState, renderer2D.getSceneViewportImage());
 
         handleEditorCommands();
