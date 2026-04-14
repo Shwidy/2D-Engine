@@ -25,6 +25,8 @@ bool Engine::init() {
     windowSpecification.Title = "Lancelot Editor";
     windowSpecification.Width = 1280;
     windowSpecification.Height = 720;
+    windowSpecification.Fullscreen = false;
+    windowSpecification.Maximized = true;
     windowSpecification.API = GraphicsAPI::OpenGL;
 
     if (!windowManager.Init(windowSpecification)) {
