@@ -10,6 +10,7 @@
 #include <imgui.h>
 
 #include <chrono>
+#include <exception>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -19,6 +20,7 @@ Engine::Engine() : running(false) {}
 extern void SetupEditorStyle();
 
 bool Engine::init() {
+    try {
     WindowSpecification windowSpecification;
     windowSpecification.Title = "Lancelot Editor";
     windowSpecification.Width = 1280;
@@ -79,6 +81,11 @@ bool Engine::init() {
     running = true;
     lastFrameTime = std::chrono::steady_clock::now();
     return true;
+    } catch (const std::exception&) {
+        return false;
+    } catch (...) {
+        return false;
+    }
 }
 
 void Engine::handleEditorCommands()

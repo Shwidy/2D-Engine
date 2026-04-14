@@ -61,7 +61,10 @@ Renderer2DData s_Data;
 bool Renderer2D::init(GLFWwindow* window) {
     m_Window = window;
     const std::filesystem::path projectRoot = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-    const std::filesystem::path shaderPath = projectRoot / "assets" / "shaders" / "Renderer2D_Quad.glsl";
+    std::filesystem::path shaderPath = projectRoot / "asset" / "shaders" / "Renderer2D_Quad.glsl";
+    if (!std::filesystem::exists(shaderPath)) {
+        shaderPath = projectRoot / "assets" / "shaders" / "Renderer2D_Quad.glsl";
+    }
 
     m_ShaderLibrary = CreateRef<ShaderLibrary>();
     m_ShaderLibrary->Load("Renderer2D_Quad", shaderPath.string());
